@@ -321,7 +321,7 @@ void AX12::setEndlessTurnMode (bool endless) {           // prende o apaga el mo
     if (endless) {
       writeInfo (CCW_ANGLE_LIMIT, 0);
     } else {
-      writeInfo (CCW_ANGLE_LIMIT, 4095);
+      writeInfo (CCW_ANGLE_LIMIT, 1023);
     }
 }
 
