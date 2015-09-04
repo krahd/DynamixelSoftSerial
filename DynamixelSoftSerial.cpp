@@ -13,6 +13,7 @@
 
 #include <DynamixelSoftSerial.h>
 #include <string.h>
+#include <arduino.h>
 
 
 // some utils definition
@@ -63,11 +64,11 @@ byte AX12::autoDetect (byte* list_motors, byte num_motors) {                // e
 }
 
 /** constructors */
-AX12::AX12 (long baud, byte motor_id, bool inv) {
+AX12::AX12 (long baud, uint8_t commPin,  byte motor_id, bool inv) {
     id = motor_id;
     inverse = inv;
     SRL = RETURN_ALL;
-    init (baud);
+    init (baud, commPin);
 }
 
 AX12::AX12 (byte motor_id, bool inv) {
@@ -76,11 +77,11 @@ AX12::AX12 (byte motor_id, bool inv) {
     SRL = RETURN_ALL;
 }
 
-AX12::AX12 (long baud, byte motor_id) {
+AX12::AX12 (long baud, uint8_t commPin, byte motor_id) {
     id = motor_id;
     inverse = false;
     SRL = RETURN_ALL;
-    init (baud);
+    init (baud, commPin);
 }
 
 AX12::AX12 (byte motor_id) {
@@ -132,39 +133,58 @@ byte AX12::readPacket () {
     unsigned long ulCounter;
     byte timeout, error, status_length, checksum, offset, bcount;
     
+    offset = 0; timeout = 0; bcount = 0;
+
     //Wipe the input buffer
-    while (bcount <AX12_BUFFER_SIZE)
+    while (bcount < AX12_BUFFER_SIZE)
         ax_rx_buffer[bcount++]=0;
 
+    bcount=0;
     // primero espera que llegue toda la data
     
-    offset = 0; timeout = 0; bcount = 0;
-    while (bcount < 13) {       // 13 es el largo máximo que puede tener un packet
+     while (bcount < 13) {       // 13 es el largo máximo que puede tener un packet
         ulCounter = 0;
-        while (!serialHandle->availble())
+        while (!serialHandle->available())
              if (ulCounter++ > 2000L) {                   // acá hay 2 errores claros, 1) faltan #defines, 2) el timeout no es relativo al baudrate
                 timeout = 1;
                 break;
             }
         if (timeout) break;          
-        ax_rx_buffer[bcount++] == serialHandle->read();
+        ax_rx_buffer[bcount++] = serialHandle->read();
     }
+
+    //DEBUG
+    //Serial.println("Read Packet" );
+    //Serial.println(bcount );
+    //Serial.println(timeout );
+        //
     // The buffer should have bcount bytes (including 2 0xff headers)
     // ahora decodifica el packet
     // corrección de cabecera
     error = 0;                                             // código interno de error
-    
+    //Serial.println("Parsing data");
+
+    /*
+    for (int j=0; j<bcount; j++){
+        Serial.print(ax_rx_buffer[j]);
+        Serial.print("-");
+    }
+    */
+
     while (ax_rx_buffer[offset] == 0xFF and bcount >0) {
         error++;
         offset++;
         bcount--;
     } 
     if (bcount >0) { 
+        //Serial.println("Enter decode loop");
         if (error == 2) error = 0;                              // prueba de cabecera
         // First two bytes MUST have been 0xFF. If we read more or less, its an issue!
         // offset = primer byte del mensaje (sin cabecera)
         // bcount = largo del mensaje leido (sin cabecera)
         status_length = 2 + ax_rx_buffer[offset+1];            // largo del mensaje decodificado
+        //DEBUG
+        //Serial.println(status_length);
         if (bcount != status_length) error+=2;                 // prueba de coherencia de data
         checksum = 0;                                          // cálculo de checksum
         for (byte f=0; f<status_length; f++)
@@ -221,7 +241,7 @@ int AX12::writeData (byte start, byte length, byte* values, bool isReg) {
       sendPacket (id, length+1, WRITE_DATA, data);
     }
     int error = returnData (RETURN_ALL).error;
-    if (start < 23) {delayMicroseconds (5000);}       // si la operación de escritura es en la EEPROM, este delay previene el embotellamiento
+    if (start < 23) delay (5);       // Wait 5 seconds if writing to eprom
                                                    // (las operaciones en la EEPROM no suelen ser real-time)
     return error;
 }
@@ -252,7 +272,11 @@ AX12info AX12::readInfo (byte registr) {
     byte reglength = lengthRead (registr);
     AX12info returninfo;
     returninfo.error = -2;
-    if (reglength == 0) {return returninfo;}
+
+    if (reglength == 0) {
+        return returninfo;
+    }
+
     AX12data returndata = readData (registr, reglength);
     returninfo.error = returndata.error;
     returninfo.value = makeInt (returndata.data, reglength);    

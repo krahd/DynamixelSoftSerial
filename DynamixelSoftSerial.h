@@ -83,9 +83,9 @@ class AX12
 {
   public:
 
-    AX12 (long baud, byte motor_id, bool inv);
+    AX12 (long baud, uint8_t commPin, byte motor_id, bool inv);
     AX12 (byte motor_id, bool inv);
-    AX12 (long baud, byte motor_id);
+    AX12 (long baud, uint8_t commPin, byte motor_id);
     AX12 (byte motor_id);
     AX12 ();
 
@@ -97,11 +97,11 @@ class AX12
     static volatile byte ax_rx_buffer[AX12_BUFFER_SIZE];              // buffer de recepción
     static volatile byte ax_rx_Pointer;                           // making these volatile keeps the compiler from optimizing loops of available()
 
-    static void init (long baud);
-    static byte autoDetect (byte* list_motors, byte num_motors);
-    static void syncWrite (byte start, byte length, byte targetlength, byte* targets, byte** valuess);
-    static void syncInfo (byte registr, byte targetlength, byte* targets, int* values);
-    static void setMultiPosVel (byte targetlength, byte* targets, int* posvalues, int* velvalues);
+    void init (long baud, uint8_t commPin);
+    byte autoDetect (byte* list_motors, byte num_motors);
+    void syncWrite (byte start, byte length, byte targetlength, byte* targets, byte** valuess);
+    void syncInfo (byte registr, byte targetlength, byte* targets, int* values);
+    void setMultiPosVel (byte targetlength, byte* targets, int* posvalues, int* velvalues);
 
     int ping ();
     int reset ();
@@ -119,9 +119,9 @@ class AX12
     
   private:
 
-    static byte writeByte (byte data);
-    static void sendPacket (byte _id, byte datalength, byte instruction, byte* data);
-    static byte readPacket ();
+    byte writeByte (byte data);
+    void sendPacket (byte _id, byte datalength, byte instruction, byte* data);
+    byte readPacket ();
     AX12data returnData (byte _srl);
     void processValue (byte registr, int* value);
     SoftwareSerialWithHalfDuplex *serialHandle;
