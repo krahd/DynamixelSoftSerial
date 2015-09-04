@@ -11,10 +11,8 @@
 
 /**** ATENCION: si se cambia el orden de los #includes, sigue compilando pero no funciona! ****/
 
-#include "ax12.h"
-#include "arduino.h"           // we need this for the serial port defines. 
+#include <DynamixelSoftSerial.h>
 #include <string.h>
-#include <avr/interrupt.h>
 
 
 // some utils definition
@@ -22,79 +20,11 @@ int makeInt (byte *dir, byte reglength);
 byte lengthRead (byte registr);
 byte lengthWrite (byte registr);
 
-/******************************************************************************
- * Hardware Serial Level, this uses the same stuff as Serial, therefore
- *  you should not use the Arduino Serial library.
- ******************************************************************************/
 
-/** helper functions to emulate half-duplex */
-void AX12::setTX () {
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-    bitClear(UCSR0B, RXCIE0);    // deshabilita la interrupción de recepción
-    bitClear(UCSR0B, RXEN0);     // deshabilila la recepción
-    bitSet(UCSR0B, TXEN0);       // habilita la trasmisión
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)  
-    bitClear(UCSR1B, RXCIE1);    // deshabilita la interrupción de recepción
-    bitClear(UCSR1B, RXEN1);     // deshabilila la recepción
-    bitSet(UCSR1B, TXEN1);       // habilita la trasmisión
-#elif defined (__AVR_ATmega8__)
-    bitClear(UCSRB, RXCIE);    // deshabilita la interrupción de recepción
-    bitClear(UCSRB, RXEN);     // deshabilila la recepción
-    bitSet(UCSRB, TXEN);       // habilita la trasmisión
-#endif    
-}
-
-void AX12::setRX () {
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-    //bitClear(TIMSK0, TOIE0);   // deshabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-    bitClear(UCSR0B, TXEN0);   // deshabilita la trasmisión
-    bitSet(UCSR0B, RXEN0);     // habilita la recepción
-    bitSet(UCSR0B, RXCIE0);    // habilita la interrupción de recepción
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)
-    //bitClear(TIMSK0, TOIE0);   // deshabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-    bitClear(UCSR1B, TXEN1);   // deshabilita la trasmisión
-    bitSet(UCSR1B, RXEN1);     // habilita la recepción
-    bitSet(UCSR1B, RXCIE1);    // habilita la interrupción de recepción
-#elif defined (__AVR_ATmega8__)
-    //bitClear(TIMSK0, TOIE0); // deshabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-    bitClear(UCSRB, TXEN);   // deshabilita la trasmisión
-    bitSet(UCSRB, RXEN);     // habilita la recepción
-    bitSet(UCSRB, RXCIE);    // habilita la interrupción de recepción 
-#endif    
-    ax_rx_Pointer = 0;         // resetea el puntero del buffer
-}
-
-void AX12::setNone () {
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-    bitClear(UCSR0B, RXCIE0);    // deshabilita la interrupción de recepción
-    bitClear(UCSR0B, RXEN0);     // deshabilila la recepción
-    bitClear(UCSR0B, TXEN0);     // deshabilita la trasmisión
-    //bitSet(TIMSK0, TOIE0);          // rehabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)
-    bitClear(UCSR1B, RXCIE1);    // deshabilita la interrupción de recepción
-    bitClear(UCSR1B, RXEN1);     // deshabilila la recepción
-    bitClear(UCSR1B, TXEN1);     // deshabilita la trasmisión
-    //bitSet(TIMSK0, TOIE0);          // rehabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-#elif defined (__AVR_ATmega8__)
-    bitClear(UCSRB, RXCIE);    // deshabilita la interrupción de recepción
-    bitClear(UCSRB, RXEN);     // deshabilila la recepción
-    bitClear(UCSRB, TXEN);     // deshabilita la trasmisión 
-    //bitSet(TIMSK0, TOIE0);        // rehabilita la interrupción del timer0 (nota: esto es sólo para entornos Arduino)
-#endif    
-}
 
 /** Sends a character out the serial port */
 byte AX12::writeByte (byte data) {
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-    while (bit_is_clear(UCSR0A, UDRE0));    // espera que el micro esté pronto para trasmitir
-    UDR0 = data;                            // escribe el byte a trasmitir
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)
-    while (bit_is_clear(UCSR1A, UDRE1));    // espera que el micro esté pronto para trasmitir
-    UDR1 = data;                            // escribe el byte a trasmitir
-#elif defined (__AVR_ATmega8__)
-    while (bit_is_clear(UCSRA, UDRE));      // espera que el micro esté pronto para trasmitir
-    UDR = data;                             // escribe el byte a trasmitir  
-#endif     
+    serialHandle->write(data);
     return data;
 }
 
@@ -103,40 +33,12 @@ byte AX12::writeByte (byte data) {
 volatile byte AX12::ax_rx_buffer[AX12_BUFFER_SIZE];
 volatile byte AX12::ax_rx_Pointer;
 
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-ISR (USART_RX_vect) {
-    AX12::ax_rx_buffer[(AX12::ax_rx_Pointer++)] = UDR0;    // esta es la rutina de interrupción de recepción
-}                                                          
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)
-ISR (USART1_RX_vect) {
-    AX12::ax_rx_buffer[(AX12::ax_rx_Pointer++)] = UDR1;    // esta es la rutina de interrupción de recepción
-}                                                          // lo que hace es meter el byte recibido en el buffer
-#elif defined (__AVR_ATmega8__)
-SIGNAL (SIG_UART_RECV) {
-    AX12::ax_rx_buffer[(AX12::ax_rx_Pointer++)] = UDR;    // esta es la rutina de interrupción de recepción
-}                                                         // lo que hace es meter el byte recibido en el buffer
-#endif    
 
 /** initializes serial transmit at baud, 8-N-1 */
 // nota: el AX12 internamente usa el Double Speed Operation (U2Xn=1). Ciertos baudrates no coinciden si no se usa este seteo
-void AX12::init (long baud) {
-    unsigned int reg = F_CPU / (baud * 8) - 1;
-#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega328P__)
-    bitSet (UCSR0A, U2X0); 
-    UBRR0H = reg >> 8;                 // setea la velocidad del USART
-    UBRR0L = reg & 0xFF; 
-#elif defined (__AVR_ATmega1280__) || defined (__AVR_ATmega128__) || defined (__AVR_ATmega2560__) || defined (__AVR_ATmega32U4__)
-    bitSet (UCSR1A, U2X1); 
-    UBRR1H = reg >> 8;
-    UBRR1L = reg & 0xFF;               // setea la velocidad del USART
-#elif defined (__AVR_ATmega8__)
-    bitSet (UCSRA, U2X); 
-    UBRRH = reg >> 8;
-    UBRRL = reg & 0xFF;                // setea la velocidad del USART
-#endif    
-    ax_rx_Pointer = 0;
-    // deshabilita tanto recepción como trasmisión
-    setNone();
+void AX12::init (long baud, uint8_t commPin) {
+    serialHandle = new SoftwareSerialWithHalfDuplex(commPin, commPin, false, false);
+    serialHandle->begin(baud);
 }
 
 /******************************************************************************
@@ -205,8 +107,8 @@ AX12::AX12 () {
 
 /** send instruction packet */
 void AX12::sendPacket (byte _id, byte datalength, byte instruction, byte* data) {
+
     byte checksum = 0;
-    setTX();
     writeByte (0xFF);
     writeByte (0xFF);
     checksum += writeByte (_id);
@@ -217,7 +119,7 @@ void AX12::sendPacket (byte _id, byte datalength, byte instruction, byte* data) 
     }
     // checksum =
     writeByte (~checksum);
-    setRX();
+    serialHandle->listen();
 }
 
 /** read status packet
@@ -229,40 +131,49 @@ void AX12::sendPacket (byte _id, byte datalength, byte instruction, byte* data) 
 byte AX12::readPacket () {
     unsigned long ulCounter;
     byte timeout, error, status_length, checksum, offset, bcount;
+    
+    //Wipe the input buffer
+    while (bcount <AX12_BUFFER_SIZE)
+        ax_rx_buffer[bcount++]=0;
+
     // primero espera que llegue toda la data
+    
     offset = 0; timeout = 0; bcount = 0;
     while (bcount < 13) {       // 13 es el largo máximo que puede tener un packet
         ulCounter = 0;
-        while ((bcount + offset) == ax_rx_Pointer) {
-            if (ulCounter++ > 1200L) {                   // acá hay 2 errores claros, 1) faltan #defines, 2) el timeout no es relativo al baudrate
+        while (!serialHandle->availble())
+             if (ulCounter++ > 2000L) {                   // acá hay 2 errores claros, 1) faltan #defines, 2) el timeout no es relativo al baudrate
                 timeout = 1;
                 break;
             }
-        }
-        if (timeout) break;
-        if ((bcount == 0) && (ax_rx_buffer[offset] != 0xff)) offset++;
-        else bcount++;
+        if (timeout) break;          
+        ax_rx_buffer[bcount++] == serialHandle->read();
     }
-    setNone();
+    // The buffer should have bcount bytes (including 2 0xff headers)
     // ahora decodifica el packet
     // corrección de cabecera
     error = 0;                                             // código interno de error
-    do {
+    
+    while (ax_rx_buffer[offset] == 0xFF and bcount >0) {
         error++;
         offset++;
         bcount--;
-    } while (ax_rx_buffer[offset] == 255);
-    if (error > 1) error = 0;                               // prueba de cabecera
-    // offset = primer byte del mensaje (sin cabecera)
-    // bcount = largo del mensaje leido (sin cabecera)
-    status_length = 2 + ax_rx_buffer[offset+1];            // largo del mensaje decodificado
-    if (bcount != status_length) error+=2;                 // prueba de coherencia de data
-    checksum = 0;                                          // cálculo de checksum
-    for (byte f=0; f<status_length; f++)
-        checksum += ax_rx_buffer[offset+f];
-    if (checksum != 255) error+=4;                          // prueba de checksum
-    ax_rx_buffer[offset+1] = error;
-    return offset;   
+    } 
+    if (bcount >0) { 
+        if (error == 2) error = 0;                              // prueba de cabecera
+        // First two bytes MUST have been 0xFF. If we read more or less, its an issue!
+        // offset = primer byte del mensaje (sin cabecera)
+        // bcount = largo del mensaje leido (sin cabecera)
+        status_length = 2 + ax_rx_buffer[offset+1];            // largo del mensaje decodificado
+        if (bcount != status_length) error+=2;                 // prueba de coherencia de data
+        checksum = 0;                                          // cálculo de checksum
+        for (byte f=0; f<status_length; f++)
+            checksum += ax_rx_buffer[offset+f];
+        if (checksum != 255) error+=4;                          // prueba de checksum
+        ax_rx_buffer[offset+1] = error;
+        return offset;
+    } 
+    else return -1;
 }
 
 /******************************************************************************
@@ -328,8 +239,7 @@ void AX12::syncWrite (byte start, byte length, byte targetlength, byte* targets,
       memcpy (&data[index], valuess[f], length);   // copio los valores
       index += length;
     }
-    sendPacket (BROADCAST_ID, superlength, SYNC_WRITE, data);
-    setNone();   
+    sendPacket (BROADCAST_ID, superlength, SYNC_WRITE, data);  
 }
 
 
@@ -499,14 +409,13 @@ byte lengthWrite (byte registr) {
 AX12data AX12::returnData (byte _srl) {
   AX12data returndata;
   if (SRL >= _srl) {
-    byte index = readPacket ();
+    byte index = readPacket ();  //We're not checking if index is not -1 (problems in the readPacket library)
     byte status_id = ax_rx_buffer [index];
     byte int_error = ax_rx_buffer [index+1];
     byte status_error = ax_rx_buffer [index+2];
     returndata.error = (int_error<<7) | status_error | ((status_id != id)<<10);       // genera el mensaje de error, combinación de error interno con error ax12
     returndata.data = (byte*) &(ax_rx_buffer [index+3]);
   } else {
-    setNone();
     returndata.error = -1;
   }
   return returndata;

@@ -13,6 +13,8 @@
 #ifndef _AX12_H
 #define _AX12_H
 
+#include <SoftwareSerialWithHalfDuplex.h>
+
 #define AX12_MAX_SERVOS          18
 #define AX12_BUFFER_SIZE         32
 
@@ -117,14 +119,12 @@ class AX12
     
   private:
 
-    static void setTX ();
-    static void setRX ();
-    static void setNone ();
     static byte writeByte (byte data);
     static void sendPacket (byte _id, byte datalength, byte instruction, byte* data);
     static byte readPacket ();
     AX12data returnData (byte _srl);
-    void processValue (byte registr, int* value); 
+    void processValue (byte registr, int* value);
+    SoftwareSerialWithHalfDuplex *serialHandle;
 
 };
 
