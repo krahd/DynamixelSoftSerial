@@ -6,7 +6,7 @@
   versión 2.1 - 27/06/10
   versión 2.2 - 19/10/10
   versión 2.3 - 30/12/10
-	versión 2.31 - 2/3/11
+  versión 2.31 - 2/3/11
 */
 
 /**** ATENCION: si se cambia el orden de los #includes, sigue compilando pero no funciona! ****/
@@ -46,18 +46,24 @@ void AX12::init (long baud, uint8_t commPin) {
  * Initialization
  ******************************************************************************/
 
-byte AX12::autoDetect (byte* list_motors, byte num_motors) {                // escanea todos los ID hasta el 253 mandando PINGs
-                                                                            // devuelve una lista con los ID que respondieron
+// Scanns all IDS 0..253 sending pings.
+// returns a list with the answering IDs
+byte AX12::autoDetect (byte* list_motors, byte num_motors) {
+    
     byte counter = 0;      
     byte *data;
-    for (byte i=0; i<254; i++) {
+    
+    for (byte i = 0; i < 254; i++) {
       sendPacket (i, 0, AX_PING, data);
       byte index = readPacket ();
       byte id = ax_rx_buffer [index];
       byte int_error = ax_rx_buffer [index+1];
+        
       if (int_error==0 && id==i) {
         list_motors[counter++] = i;
-        if (counter == num_motors) {break;}
+        if (counter == num_motors) {
+            break;
+        }
       }
     }
     return counter;
@@ -325,9 +331,9 @@ void AX12::setEndlessTurnMode (bool endless) {           // prende o apaga el mo
     }
 }
 
-void AX12::endlessTurn (int velocidad) {                    // setea la velocidad, en el modo "endless turn"
-    bool direccion = sign2bin (velocidad);
-    writeInfo (MOVING_SPEED, abs(velocidad)|((direccion^inverse)<<10));
+void AX12::endlessTurn (int vel) {                    // setea la vel, en el modo "endless turn"
+    bool direccion = sign2bin (vel);
+    writeInfo (MOVING_SPEED, abs(vel)|((direccion^inverse)<<10));
 }
 
 int AX12::presentPSL (int* PSL) {                                // lee position, speed & load de una sola vez
@@ -383,8 +389,8 @@ void AX12::setMultiPosVel (byte targetlength, byte* targets, int* posvalues, int
 
 // solución para que bin2sign y sign2bin queden fuera de acá: distribuir junto con "util.cpp"
  
-bool sign2bin (int numero) {         // numero > 0 --> true; numero <= 0 --> false
-  return (numero > 0);
+bool sign2bin (int number) {         // number > 0 --> true; number <= 0 --> false
+  return (number > 0);
 }
 
 char bin2sign (bool var) {           // var = 0 --> sign = -1; var = 1 --> sign = 1

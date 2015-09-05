@@ -1,14 +1,30 @@
 /*
   ax12.h - arbotiX Library for AX-12 Servos
   Copyright (c) 2008,2009 Michael E. Ferguson.  All right reserved.
-  Modificada el 15/11/09 por Pablo Gindel.
-  versión 2.0 - 10/02/10
-  versión 2.1 - 27/06/10
-  versión 2.2 - 19/10/10
-	version 2.31 - 2/3/11
+ 
+  Modified on 15/11/09 by Pablo Gindel
+  version 2.0 - 10/02/10
+  version 2.1 - 27/06/10
+  version 2.2 - 19/10/10
+  version 2.31 - 2/3/11
+ 
+  Modified on September 4, 2015 by Diego García del Río (garci66@gmail.com) and Tomás Laurenzo (tomas@laurenzo.net)
+  Let's say is version 2.4
+ 
+  We added the possibility of using SoftwareSerialHalfDuplex at a lower bitrate and therefore controlling the motors with an arbitrary pin. This frees the UART and allows to have serial connectivity over USB with and Arduino UNO and no extra hardware.
+ 
+   However, given the speed of the Arduino UNO, one first need to use the pins 0 and 1 (shorted) as before to set the lower speed and the none is free to use any GPIO.
+ 
+ 
+  We use the following library for SoftwareSerialWithHalfDuplex: https://github.com/krahd/SoftwareSerialWithHalfDuplex
+ 
+ 
+  Please see the readme file for more information.
+
 */
 
-// to do: defines para los errores
+// todo: defines para los errores
+// todo: create keywords.txt
 
 #ifndef _AX12_H
 #define _AX12_H
@@ -76,11 +92,18 @@
 
 typedef unsigned char byte;
 
-typedef struct {int error; byte *data;} AX12data;
-typedef struct {int error; int value;} AX12info;
+typedef struct {
+    int error;
+    byte *data;
+} AX12data;
 
-class AX12
-{
+typedef struct {
+    int error;
+    int value;
+} AX12info;
+
+class AX12 {
+    
   public:
 
     AX12 (long baud, uint8_t commPin, byte motor_id, bool inv);
@@ -93,16 +116,15 @@ class AX12
     bool inverse;
     byte SRL;                                        // status return level
 
-    // el buffer no puede ser privado porque debe ser visible desde la ISR
-    static volatile byte ax_rx_buffer[AX12_BUFFER_SIZE];              // buffer de recepción
-    static volatile byte ax_rx_Pointer;                           // making these volatile keeps the compiler from optimizing loops of available()
+    // The buffer can't be private, as it needs to be visible from the ISR
+    static volatile byte ax_rx_buffer[AX12_BUFFER_SIZE]; // receiving buffer
+    static volatile byte ax_rx_Pointer; // making these volatile keeps the compiler from optimizing loops of available()
 
     void init (long baud, uint8_t commPin);
     byte autoDetect (byte* list_motors, byte num_motors);
     void syncWrite (byte start, byte length, byte targetlength, byte* targets, byte** valuess);
     void syncInfo (byte registr, byte targetlength, byte* targets, int* values);
     void setMultiPosVel (byte targetlength, byte* targets, int* posvalues, int* velvalues);
-
     int ping ();
     int reset ();
     AX12data readData (byte start, byte length);
@@ -111,7 +133,7 @@ class AX12
     AX12info readInfo (byte registr);
     int writeInfo (byte registr, int value, bool isReg = false);
     void setEndlessTurnMode (bool endless);
-    void endlessTurn (int velocidad);
+    void endlessTurn (int vel);
     int presentPSL (int* PSL);
     void setSRL (byte _srl);
     byte changeID (byte newID);
@@ -130,7 +152,7 @@ class AX12
 
 // utils
 
-bool sign2bin (int numero);
+bool sign2bin (int number);
 char bin2sign (bool var);
 
 /**  Macros  **/
