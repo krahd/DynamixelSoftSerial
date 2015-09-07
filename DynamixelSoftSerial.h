@@ -16,7 +16,7 @@
    However, given the speed of the Arduino UNO, one first need to use the pins 0 and 1 (shorted) as before to set the lower speed and the none is free to use any GPIO.
  
  
-  We use the following library for SoftwareSerialWithHalfDuplex: https://github.com/krahd/SoftwareSerialWithHalfDuplex
+  We use the following library for SoftwareSerialWithHalfDuplex: https://github.com/krahd/SoftwareSerialWithHalfDuplex forked from https://github.com/nickstedman/SoftwareSerialWithHalfDuplex
  
  
   Please see the readme file for more information.
@@ -34,11 +34,14 @@
 #define AX12_MAX_SERVOS          18
 #define AX12_BUFFER_SIZE         32
 
+#define AX12_DEFAULT_ID         1       // ax12's come with id 1 by default
+#define AX12_DEFAULT_BAUD       57600   // arbitrary. I don't pick the default 1Mbps as it woulnd't work over SoftwareSerial
+
 /** EEPROM AREA **/
-#define MODEL_NUMBER             0
-#define VERSION                  2
-#define ID                       3
-#define BAUD_RATE                4
+#define AX12_MODEL_NUMBER             0
+#define AX12_VERSION                  2
+#define AX12_ID                       3
+#define AX12_BAUD_RATE                4  //TODO add AX12_ prefix to all the defines
 #define RETURN_DELAY_TIME        5
 #define CW_ANGLE_LIMIT           6
 #define CCW_ANGLE_LIMIT          8
@@ -87,8 +90,9 @@
 #define SYNC_WRITE               131
 
 /** Special IDs **/
-#define BROADCAST_ID             254
+#define AX12_BROADCAST_ID             254
 
+// #define USE_UART // uncomment for using the UART with pins 0 and 1 joined. 
 
 typedef unsigned char byte;
 
@@ -112,42 +116,64 @@ class AX12 {
     AX12 (byte motor_id);
     AX12 ();
 
-    byte id;
+    
     bool inverse;
-    byte SRL;                                        // status return level
+    byte SRL;  // status return level
 
     // The buffer can't be private, as it needs to be visible from the ISR
     static volatile byte ax_rx_buffer[AX12_BUFFER_SIZE]; // receiving buffer
     static volatile byte ax_rx_Pointer; // making these volatile keeps the compiler from optimizing loops of available()
 
     void init (long baud, uint8_t commPin);
+    
+    void setId (byte newId);
+    byte getId ();
+    
     byte autoDetect (byte* list_motors, byte num_motors);
+    
     void syncWrite (byte start, byte length, byte targetlength, byte* targets, byte** valuess);
     void syncInfo (byte registr, byte targetlength, byte* targets, int* values);
     void setMultiPosVel (byte targetlength, byte* targets, int* posvalues, int* velvalues);
+    
     int ping ();
     int reset ();
+    
     AX12data readData (byte start, byte length);
     int writeData (byte start, byte length, byte* values, bool isReg = false);
+    
     int action ();
+    
     AX12info readInfo (byte registr);
     int writeInfo (byte registr, int value, bool isReg = false);
+    
     void setEndlessTurnMode (bool endless);
     void endlessTurn (int vel);
+    
     int presentPSL (int* PSL);
+    
     void setSRL (byte _srl);
+    
     byte changeID (byte newID);
     int setPosVel (int pos, int vel);
     
+    void setBroadcast(bool broadcast);
+    
   private:
 
+    byte id;
+    byte oldId; // used when turning broadcast off
     byte writeByte (byte data);
+    
     void sendPacket (byte _id, byte datalength, byte instruction, byte* data);
     byte readPacket ();
+    
     AX12data returnData (byte _srl);
+    
     void processValue (byte registr, int* value);
-    SoftwareSerialWithHalfDuplex *serialHandle;
+    
+    //SoftwareSerialWithHalfDuplex *serialHandle;
 
+   Stream *serialHandle;
 };
 
 // utils
@@ -155,19 +181,22 @@ class AX12 {
 bool sign2bin (int number);
 char bin2sign (bool var);
 
-/**  Macros  **/
+
+// macros
 
 #define setPos(pos) writeInfo (GOAL_POSITION, pos)
 #define regPos(pos) writeInfo (GOAL_POSITION, pos, true)
-#define setVel(vel) writeInfo (MOVING_SPEED, vel)
-#define setTorque(torque) writeInfo (TORQUE_LIMIT, torque)
-#define setMultiPos(a, b, c) syncInfo (GOAL_POSITION, a, b, c)
-#define setMultiVel(a, b, c) syncInfo (MOVING_SPEED, a, b, c)
-#define setMultiTorque(a, b, c) syncInfo (TORQUE_LIMIT, a, b, c)
-#define torqueOn writeInfo (TORQUE_ENABLE, 1)
-#define torqueOff writeInfo (TORQUE_ENABLE, 0)
 #define getPos() readInfo (PRESENT_POSITION).value
+#define setMultiPos(a, b, c) syncInfo (GOAL_POSITION, a, b, c)
+
+#define setSpeed(vel) writeInfo (MOVING_SPEED, vel)
 #define getSpeed() readInfo (PRESENT_SPEED).value
+#define setMultiSpeed(a, b, c) syncInfo (MOVING_SPEED, a, b, c)
+
+#define setTorqueOn() writeInfo (TORQUE_ENABLE, 1)
+#define setTorqueOff() writeInfo (TORQUE_ENABLE, 0)
+#define setTorque(torque) writeInfo (TORQUE_LIMIT, torque)
+#define setMultiTorque(a, b, c) syncInfo (TORQUE_LIMIT, a, b, c)
 #define getLoad() readInfo (PRESENT_LOAD).value
 
 
