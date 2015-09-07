@@ -173,7 +173,10 @@ class AX12 {
     
     //SoftwareSerialWithHalfDuplex *serialHandle;
 
-   Stream *serialHandle;
+    Stream *serialHandle;
+    
+    bool useSoftwareSerial;
+
 };
 
 // utils

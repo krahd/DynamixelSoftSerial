@@ -47,10 +47,21 @@ volatile byte AX12::ax_rx_Pointer;
 
 void AX12::init (long baud, uint8_t commPin) {
     
-    serialHandle = new SoftwareSerialWithHalfDuplex(commPin, commPin, false, false);
+    if (commPin == 1 || commPin == 0) {
+        useSoftwareSerial = false;
+    } else {
+        useSoftwareSerial = true;
+    }
     
+    if (!useSoftwareSerial) {
+        serialHandle = &Serial;
+        ((HardwareSerial *) (serialHandle))->begin(baud);
+        
+    } else {
+        serialHandle = new SoftwareSerialWithHalfDuplex(commPin, commPin, false, false);
         ((SoftwareSerialWithHalfDuplex *) (serialHandle))->begin(baud);
-    //serialHandle->begin(baud);
+    }
+
     
 }
 
@@ -144,8 +155,14 @@ void AX12::sendPacket (byte _id, byte datalength, byte instruction, byte* data) 
     }
     // checksum =
     writeByte (~checksum);
-    ((SoftwareSerialWithHalfDuplex *) (serialHandle))->listen();
-    //serialHandle->listen();
+    
+    if (!useSoftwareSerial) {
+//        ((HardwareSerial *) (serialHandle))->listen();
+        // there's no listen for hardware serial as it is full duplex.
+    } else {
+        ((SoftwareSerialWithHalfDuplex *) (serialHandle))->listen();
+    }
+
 }
 
 /* read status packet
