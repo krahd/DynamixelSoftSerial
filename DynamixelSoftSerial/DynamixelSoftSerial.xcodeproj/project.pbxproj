@@ -1,0 +1,67 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXGroup section */
+		E2634A341B9E85F500F6F3C4 = {
+			isa = PBXGroup;
+			children = (
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXProject section */
+		E2634A351B9E85F500F6F3C4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0640;
+			};
+			buildConfigurationList = E2634A381B9E85F500F6F3C4 /* Build configuration list for PBXProject "DynamixelSoftSerial" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = E2634A341B9E85F500F6F3C4;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		E2634A391B9E85F500F6F3C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		E2634A3A1B9E85F500F6F3C4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E2634A381B9E85F500F6F3C4 /* Build configuration list for PBXProject "DynamixelSoftSerial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E2634A391B9E85F500F6F3C4 /* Debug */,
+				E2634A3A1B9E85F500F6F3C4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E2634A351B9E85F500F6F3C4 /* Project object */;
+}
